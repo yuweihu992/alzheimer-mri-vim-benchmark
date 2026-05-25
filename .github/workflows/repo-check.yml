@@ -24,6 +24,9 @@ jobs:
               "docs/DATASET_OASIS.md",
               "docs/GITHUB_SETUP.md",
               "docs/GITHUB_PROJECT_TASKS.md",
+              "docs/RESULTS.md",
+              "tools/prepare_oasis1_metadata.py",
+              "tools/make_subject_splits.py",
           ]
           missing = [p for p in required if not Path(p).exists()]
           if missing:
@@ -52,3 +55,5 @@ jobs:
 
           print("repo hygiene ok")
           PY
+      - name: Compile Python files
+        run: python -m compileall train.py infer.py src tools

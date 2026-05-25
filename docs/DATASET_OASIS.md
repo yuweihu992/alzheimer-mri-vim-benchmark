@@ -108,10 +108,32 @@ main metric: subject-level macro F1
 secondary metric: slice-level accuracy
 ```
 
+## Metadata Commands
+
+Normalize the official OASIS-1 clinical CSV:
+
+```powershell
+python tools/prepare_oasis1_metadata.py `
+  --clinical-csv data/raw/oasis1/oasis_cross-sectional.csv `
+  --output metadata/oasis1_subjects.csv `
+  --min-age 60
+```
+
+Create subject-level splits:
+
+```powershell
+python tools/make_subject_splits.py `
+  --metadata metadata/oasis1_subjects.csv `
+  --output splits/oasis1_age60_binary_seed1337.csv `
+  --seed 1337
+```
+
+The split generator writes the same split label to every row belonging to the
+same subject. It fails if a subject has conflicting labels.
+
 ## GitHub README Wording
 
 Use this framing:
 
 > This project is a reproducible research demo for Alzheimer MRI classification
 > on OASIS data. It is not a clinical diagnostic system.
-

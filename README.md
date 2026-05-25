@@ -1,19 +1,107 @@
-# Vision Mamba Lab
+# Alzheimer MRI Vision Mamba Benchmark
 
-Containerized image training and inference environment for Vision Mamba style
-experiments using the `Mamba2` block from `mamba-ssm==2.2.6.post3`.
+Reproducible Alzheimer MRI classification demo with OASIS data, subject-level
+splits, CNN/ViT/Vision Mamba baselines, and a future explainable inference UI.
 
-Default training now uses a Vim-style bidirectional classifier:
+This repository is a portfolio and research-engineering project. It is not a
+clinical diagnostic system.
 
-1. crop image with ImageNet-style transforms
-2. split image into patches with a Conv2d patch embed
-3. prepend a learned class token
-4. add learned positional embeddings with interpolation for high resolution
-5. pass tokens through bidirectional forward/backward `Mamba2` blocks
-6. classify
+## Why This Project Exists
 
-The older alternating-direction `mamba2` classifier remains available with
-`--model-arch mamba2`. Use `--model-arch vim` for the default vision path.
+Many Alzheimer MRI demos report high accuracy from pre-sliced 2D images. That is
+easy to reproduce badly: the same subject or near-duplicate slices can leak
+across train and test sets.
+
+This repo is designed around a stricter workflow:
+
+1. use official OASIS data, not Kaggle mirrors as the source of truth
+2. split by subject before slice extraction
+3. keep raw MRI data out of git
+4. compare ResNet, ViT, and Vision Mamba under the same protocol
+5. report per-class and subject-level metrics, not only accuracy
+
+## Current Status
+
+| Area | Status |
+| --- | --- |
+| Docker GPU training environment | Available |
+| Vision Mamba style classifier | Available |
+| ViT comparison utility | Available |
+| OASIS-1 metadata parser | Available |
+| OASIS-1 subject split generator | Available |
+| OASIS preprocessing to 2D slices | Planned |
+| OASIS baseline results | Planned |
+| Demo UI | Planned |
+
+## Repository Layout
+
+```text
+src/mamba2_vision/       model, checkpoint, and dataloader code
+tools/                   benchmark, telemetry, OASIS metadata, split tools
+scripts/                 PowerShell and shell wrappers
+docs/                    dataset, GitHub, and repo design docs
+metadata/                commit-safe schemas or generated metadata summaries
+splits/                  commit-safe split schemas or generated split summaries
+reports/                 final report artifacts
+examples/                public-safe screenshots and demo images
+```
+
+Ignored local-only paths:
+
+```text
+data/
+outputs/
+checkpoints/
+runs/
+tmp/
+*.pt
+*.pth
+*.onnx
+*.pdf
+```
+
+## Dataset Plan
+
+First target: OASIS-1.
+
+Recommended first task:
+
+```text
+dataset: OASIS-1
+filter: age >= 60
+labels: CDR == 0 vs CDR > 0
+split: subject-level, stratified, seed 1337
+input: fixed middle brain slices or multi-slice aggregation
+models: ResNet, ViT, Vision Mamba
+main metric: subject-level macro F1
+```
+
+See [docs/DATASET_OASIS.md](docs/DATASET_OASIS.md).
+
+## OASIS-1 Metadata and Split
+
+After downloading OASIS-1 clinical CSV from the official OASIS page, put it under
+`data/raw/oasis1/` locally. Do not commit it unless the data terms allow it.
+
+Create normalized metadata:
+
+```powershell
+python tools/prepare_oasis1_metadata.py `
+  --clinical-csv data/raw/oasis1/oasis_cross-sectional.csv `
+  --output metadata/oasis1_subjects.csv `
+  --min-age 60
+```
+
+Create subject-level splits:
+
+```powershell
+python tools/make_subject_splits.py `
+  --metadata metadata/oasis1_subjects.csv `
+  --output splits/oasis1_age60_binary_seed1337.csv `
+  --seed 1337
+```
+
+The split tool fails if one subject has conflicting labels.
 
 ## Host Requirements
 
@@ -36,7 +124,7 @@ Already validated on this machine:
 
 ## Smoke Test
 
-Runs one synthetic image train step, saves a checkpoint, reloads it, and runs
+Runs one synthetic image train step, saves checkpoints, reloads them, and runs
 inference on a generated image.
 
 ```powershell
@@ -49,22 +137,7 @@ Expected artifacts:
 - `outputs/smoke/smoke_vim.pt`
 - `outputs/smoke/sample.png`
 
-## Train on CIFAR10
-
-```powershell
-.\scripts\train_cifar10.ps1
-```
-
-Output:
-
-- `outputs/cifar10/last.pt`
-- `outputs/cifar10/best.pt`
-
-Training shows a live progress bar in interactive terminals. It reports ETA,
-batch loss, running loss, running accuracy, images/second, learning rate, and
-allocated GPU memory. Use `--no-progress` for plain log files.
-
-## Train on Your Own Images
+## Train on ImageFolder Data
 
 Put data in ImageFolder layout:
 
@@ -83,16 +156,6 @@ Then run:
 
 Defaults are `--model-arch vim`, `--image-size 384`, and ImageNet-style
 train/validation crops.
-
-## Inference
-
-```powershell
-.\scripts\infer.ps1 -Checkpoint /workspace/outputs/cifar10/best.pt -Image /workspace/path/to/image.jpg
-```
-
-Use Linux container paths for files mounted under this repo. For example,
-`C:\Users\yuhsu\OneDrive - NVIDIA Corporation\Documents\Mamba-2\data\sample.jpg`
-is `/workspace/data/sample.jpg` inside the container.
 
 ## Fair Vim/Mamba2 vs ViT Comparison
 
@@ -118,28 +181,18 @@ docker compose run --rm mamba2-vision python train.py --dataset cifar10 --data-d
 docker compose run --rm mamba2-vision python infer.py --checkpoint /workspace/outputs/cifar10/best.pt --image /workspace/data/sample.jpg
 ```
 
+## Project Docs
+
+- [docs/REPO_DESIGN.md](docs/REPO_DESIGN.md) - public repository structure and milestones
+- [docs/DATASET_OASIS.md](docs/DATASET_OASIS.md) - OASIS-1/OASIS-2 dataset plan and leakage rules
+- [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md) - GitHub repository, project board, and CI setup
+- [docs/GITHUB_PROJECT_TASKS.md](docs/GITHUB_PROJECT_TASKS.md) - issue list for GitHub Projects
+- [docs/RESULTS.md](docs/RESULTS.md) - result report template
+
 ## Notes
 
-- This is not a claim that Vim/Mamba beats ViT/CNN for single-image tasks. It is
-  a controlled environment for testing that hypothesis.
-- CIFAR10 is only a pipeline smoke test. For real high-resolution vision work,
-  use `imagefolder` with real high-resolution images.
-- For temporal images or video frames, keep frame order and feed frame/patch
-  tokens as a longer sequence in the next step.
+- Do not claim Vision Mamba beats ViT/CNN unless the same split and preprocessing
+  protocol prove it.
+- CIFAR10 is only a pipeline smoke test.
+- OASIS raw data, checkpoints, and generated outputs are intentionally ignored.
 - `mamba-ssm` requires Linux, CUDA, PyTorch, and an NVIDIA GPU for practical use.
-
-## Portfolio Roadmap
-
-This repository is being shaped into an Alzheimer MRI classification portfolio
-project using OASIS data with subject-level splits and fair CNN/ViT/Vision Mamba
-baselines.
-
-Project docs:
-
-- `docs/REPO_DESIGN.md` - public repository structure and milestones
-- `docs/DATASET_OASIS.md` - OASIS-1/OASIS-2 dataset plan and leakage rules
-- `docs/GITHUB_SETUP.md` - GitHub repository, project board, and CI setup
-- `docs/GITHUB_PROJECT_TASKS.md` - issue list for GitHub Projects
-
-Medical disclaimer: this repository is a reproducible research and portfolio
-demo. It is not a clinical diagnostic system.

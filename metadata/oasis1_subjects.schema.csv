@@ -1,0 +1,2 @@
+subject_id,scan_id,age,sex,cdr,mmse,binary_label,severity_label,source_row
+OAS1_0000,OAS1_0000_MR1,75,F,0,29,non_demented,cdr_0,2
