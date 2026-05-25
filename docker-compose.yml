@@ -1,0 +1,20 @@
+services:
+  mamba2-vision:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mamba2-vision:local
+    working_dir: /workspace
+    gpus: all
+    shm_size: "8gb"
+    environment:
+      PYTHONPATH: /workspace/src
+      TORCH_HOME: /workspace/.cache/torch
+      HF_HOME: /workspace/.cache/huggingface
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - .:/workspace
+    stdin_open: true
+    tty: true
+

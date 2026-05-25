@@ -1,0 +1,54 @@
+name: repo-check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check repository hygiene
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+
+          required = [
+              "README.md",
+              "Dockerfile",
+              "docker-compose.yml",
+              "requirements.txt",
+              "docs/REPO_DESIGN.md",
+              "docs/DATASET_OASIS.md",
+              "docs/GITHUB_SETUP.md",
+              "docs/GITHUB_PROJECT_TASKS.md",
+          ]
+          missing = [p for p in required if not Path(p).exists()]
+          if missing:
+              raise SystemExit(f"Missing required files: {missing}")
+
+          forbidden_dirs = {"data", "outputs", "checkpoints", "runs", "tmp"}
+          forbidden_suffixes = {".pt", ".pth", ".onnx", ".tar", ".gz", ".zip", ".pdf"}
+
+          tracked = subprocess.check_output(
+              ["git", "ls-files"],
+              text=True,
+              encoding="utf-8",
+          ).splitlines()
+
+          bad = []
+          for name in tracked:
+              path = Path(name)
+              if path.parts and path.parts[0] in forbidden_dirs:
+                  bad.append(name)
+              if path.suffix.lower() in forbidden_suffixes:
+                  bad.append(name)
+
+          if bad:
+              preview = "\n".join(bad[:40])
+              raise SystemExit(f"Forbidden local artifacts found:\n{preview}")
+
+          print("repo hygiene ok")
+          PY
