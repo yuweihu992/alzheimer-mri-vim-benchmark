@@ -1,5 +1,7 @@
 # Alzheimer MRI Vision Mamba Benchmark
 
+Languages: [English](README.md) | [繁體中文](README.zh-TW.md)
+
 Reproducible Alzheimer MRI classification demo with OASIS data, subject-level
 splits, CNN/ViT/Vision Mamba baselines, and a future explainable inference UI.
 
